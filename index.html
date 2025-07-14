@@ -146,7 +146,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwfpbAo8bFlmU4K0SsJ4RIZ6aJgXYiqJGYmgqdWT6M/dev"; // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJfA2v13_9Uc1JOK8Zyhsp3amszHJRfmkD_QXdY713-vM4Tv-ITdnK3yC1PTjnn4ps/exec"; // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT URL HERE
 
         const data = {
             weekday: {
@@ -214,6 +214,9 @@
             weekend: ['#10b981', '#3b82f6', '#a8a29e']
         };
 
+        console.log("Tracker tasks:", tasks.map(t => t.title));
+        console.log("Completed tasks from DB:", completedTasks);
+        
         function renderDashboardSchedule(view) {
             const viewData = data[view];
             scheduleTitle.textContent = viewData.title;
