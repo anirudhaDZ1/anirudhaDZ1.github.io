@@ -10,12 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals -->
-    <!-- Application Structure Plan: The application is now a multi-view SPA with 'Dashboard' and 'Tracker' pages. The structure uses a main navigation to switch between these views. The Dashboard retains its original design for planning and visualization. The new Tracker view is task-oriented, showing a daily checklist with progress visualization. This separation allows the user to focus on either planning (Dashboard) or execution (Tracker). Google Sheets integration via an Apps Script proxy enables persistent state for the tracker. -->
+    <!-- Application Structure Plan: The application is a multi-view SPA with 'Dashboard', 'Tracker', and 'Roadmap' pages. Navigation buttons switch between these views. The Dashboard provides a daily schedule overview, the Tracker allows for daily task completion logging, and the Roadmap presents the long-term career strategy. This structure separates daily tactics from the overall strategic vision, allowing the user to zoom in on daily tasks or zoom out to see the bigger picture. -->
     <!-- Visualization & Content Choices: 
-        - Main Navigation -> Navigate -> Buttons -> JS View Toggle -> Justification: Clear separation of concerns between planning and tracking.
-        - Tracker View -> Track Progress -> Checklist with Checkboxes -> JS + Google Apps Script -> Justification: Allows for daily, interactive task tracking with persistent storage.
-        - Progress Bar -> Inform -> Dynamic Width Bar -> JS updates -> Justification: Provides immediate visual feedback on daily goal completion.
-        - Date Navigation -> Navigate Time -> Buttons -> JS Date Change & Data Fetch -> Justification: Enables reviewing past performance and preparing for the next day.
+        - Career Roadmap -> Organize/Inform -> Accordion-style collapsible sections for each phase -> JS Toggle -> Justification: Breaks down the long-term plan into manageable, high-level phases. Users can focus on one phase at a time without being overwhelmed by the full text, enhancing readability and focus on the multi-month strategy. Method: HTML/CSS/JS.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
@@ -63,6 +60,14 @@
             display: none;
             font-style: italic;
         }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-arrow {
+            transition: transform 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="text-stone-800">
@@ -78,6 +83,7 @@
             <div class="inline-flex rounded-lg shadow-sm bg-white p-1">
                 <button data-view="dashboard" class="view-btn px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Dashboard</button>
                 <button data-view="tracker" class="view-btn px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Tracker</button>
+                <button data-view="roadmap" class="view-btn px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Roadmap</button>
             </div>
         </nav>
 
@@ -135,6 +141,17 @@
                 </section>
             </div>
 
+            <div id="roadmap-view" class="view">
+                <section id="roadmap" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900">Your Career Roadmap</h2>
+                        <p class="mt-2 text-stone-600 max-w-2xl mx-auto">This is your strategic, long-term plan. Use this view to understand the bigger picture and ensure your daily actions align with your ultimate career goals.</p>
+                    </div>
+                    <div class="space-y-4" id="roadmap-container">
+                    </div>
+                </section>
+            </div>
+
             <section id="rules" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mt-12">
                 <div class="text-center mb-8">
                     <h2 class="text-3xl font-bold text-stone-900">The Rules of Engagement</h2>
@@ -150,7 +167,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhDbnvzAEpPnCBRtFR58k_johPx9ig9xpoINRPLAwoQjOxwUrbMkX6NdZcFt5l6tsU/exec"; // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJfA2v13_9Uc1JOK8Zyhsp3amszHJRfmkD_QXdY713-vM4Tv-ITdnK3yC1PTjnn4ps/exec"; // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT URL HERE
 
         const data = {
             weekday: {
@@ -191,6 +208,52 @@
                 { icon: "🗓️", title: "Prepare the Night Before", description: "Decide exactly what you will work on in your first study block the next morning. This removes friction." },
                 { icon: "💪", title: "Be Imperfectly Consistent", description: "You will have bad days. The goal is not perfection, but to get back on track with the next scheduled block. Aim for 80% compliance." },
                 { icon: "🛠️", title: "A System, Not a Prison", description: "This schedule is a tool to serve your ambition. After a month, review and adjust it, but always protect your Deep Work blocks." }
+            ],
+            roadmap: [
+                { 
+                    phase: "Phase 1: Foundational Mastery (Months 1-3)",
+                    icon: "🏗️",
+                    description: "Building a rock-solid, deep understanding of the core concepts. Goal is comprehension, not just completion.",
+                    goal: "You can explain fundamental ML algorithms and their underlying math to someone else. You are comfortable with data manipulation in Python.",
+                    actionPlan: [
+                        "<strong>Months 1-2: Core Theory & Mathematics.</strong> Dive deep into your Applied AI/Applied Roots course. Focus intensely on Python for Data Science (NumPy, Pandas, Matplotlib) and Mathematics for ML (Linear Algebra, Calculus, Probability, Statistics).",
+                        "<strong>Month 3: Foundational ML Algorithms.</strong> Understand algorithms like Linear Regression, Logistic Regression, Decision Trees, SVM, and Clustering. Know their mathematical intuition, pros/cons, and how to implement them from scratch."
+                    ]
+                },
+                { 
+                    phase: "Phase 2: Practical Application & Portfolio Building (Months 4-6)",
+                    icon: "🛠️",
+                    description: "This is where you prove you can apply your knowledge. A strong portfolio is non-negotiable.",
+                    goal: "You have a GitHub profile with 2-3 well-documented, high-quality projects. One of these projects should be 'live' or deployed.",
+                    actionPlan: [
+                        "<strong>Month 4: Intermediate ML & First Major Project.</strong> Learn Ensemble techniques (Random Forests, Gradient Boosting). Complete a detailed, end-to-end project (e.g., House Price Prediction) and document it on GitHub.",
+                        "<strong>Month 5: Specialization & Second Major Project.</strong> Choose a specialization (CV or NLP) and build a more complex, independent project. Use Krish Naik's videos for practical implementation details.",
+                        "<strong>Month 6: MLOps & Deployment.</strong> Learn MLOps basics (Docker, Flask/FastAPI, AWS/GCP). Deploy one of your projects as a simple web interface."
+                    ]
+                },
+                { 
+                    phase: "Phase 3: Job Hunting & Interview Preparation (Months 7-8)",
+                    icon: "�",
+                    description: "Transition into a full-time job seeker. This phase requires as much effort as the learning phase.",
+                    goal: "You are consistently clearing initial screening rounds and getting technical interview calls. Aim to have your first offer by the end of this phase.",
+                    actionPlan: [
+                        "<strong>Month 7: Resume, Profile & Networking.</strong> Build a one-page, project-focused resume. Optimize your LinkedIn profile and actively network in online communities.",
+                        "<strong>Month 8: Active Application & Interview Grinding.</strong> Apply strategically to 5-10 relevant jobs per day, focusing on startups. Practice coding (HackerRank/LeetCode), ML theory, SQL, and behavioral questions."
+                    ]
+                },
+                { 
+                    phase: "Phase 4: The First Job & Your Path Abroad (First 2 Years)",
+                    icon: "🌍",
+                    description: "Landing the first job is the biggest hurdle. The focus now shifts to gaining experience for international opportunities.",
+                    goal: "Become a valuable, experienced engineer with a strong professional brand, ready for international markets.",
+                    actionPlan: [
+                        "<strong>Gain Deep Experience:</strong> Become an expert in your domain and understand the business impact of your work.",
+                        "<strong>Focus on High-Impact Technologies:</strong> Get hands-on experience with cloud platforms (AWS, Azure, GCP) and production-level MLOps.",
+                        "<strong>Keep Learning:</strong> Stay updated with the latest research and technologies (e.g., LLMs, Generative AI).",
+                        "<strong>Build Your Professional Brand:</strong> Speak at meetups, write blog posts, or contribute to open-source projects.",
+                        "<strong>Research International Markets:</strong> After 1-2 years, start researching job markets and tailoring your skills for countries like Canada, Germany, etc."
+                    ]
+                }
             ]
         };
 
@@ -206,6 +269,7 @@
         const scheduleTitle = document.getElementById('schedule-title');
         const scheduleIntro = document.getElementById('schedule-intro');
         const rulesGrid = document.getElementById('rules-grid');
+        const roadmapContainer = document.getElementById('roadmap-container');
         const currentDateEl = document.getElementById('currentDate');
         const prevDayBtn = document.getElementById('prevDayBtn');
         const nextDayBtn = document.getElementById('nextDayBtn');
@@ -253,6 +317,51 @@
                     <p class="mt-4 text-stone-600">${rule.description}</p>
                 `;
                 rulesGrid.appendChild(ruleCard);
+            });
+        }
+
+        function renderRoadmap() {
+            roadmapContainer.innerHTML = '';
+            data.roadmap.forEach(item => {
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'border border-stone-200 rounded-lg';
+                accordionItem.innerHTML = `
+                    <button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+                        <span class="flex items-center">
+                            <span class="text-2xl mr-4">${item.icon}</span>
+                            <span class="text-lg font-semibold text-stone-800">${item.phase}</span>
+                        </span>
+                        <span class="accordion-arrow transform transition-transform duration-300">▶</span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="p-4 pt-0">
+                            <p class="text-stone-600 mb-4">${item.description}</p>
+                            <h5 class="font-semibold text-stone-700 mb-2">Action Plan:</h5>
+                            <ul class="list-disc list-inside space-y-2 text-stone-600">
+                                ${item.actionPlan.map(action => `<li>${action}</li>`).join('')}
+                            </ul>
+                            <div class="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                                <h5 class="font-semibold text-emerald-800">Goal:</h5>
+                                <p class="text-emerald-700">${item.goal}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                roadmapContainer.appendChild(accordionItem);
+            });
+
+            document.querySelectorAll('.accordion-header').forEach(button => {
+                button.addEventListener('click', () => {
+                    const content = button.nextElementSibling;
+                    const arrow = button.querySelector('.accordion-arrow');
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                        arrow.style.transform = 'rotate(0deg)';
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                        arrow.style.transform = 'rotate(90deg)';
+                    } 
+                });
             });
         }
 
@@ -432,6 +541,7 @@
             document.querySelector('.view-btn[data-view="dashboard"]').click();
             handleDashboardViewChange('weekday');
             renderRules();
+            renderRoadmap();
         });
     </script>
 </body>
