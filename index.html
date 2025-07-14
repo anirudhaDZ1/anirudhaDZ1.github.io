@@ -337,12 +337,14 @@
         }
 
         async function updateTaskStatus(date, taskTitle, isCompleted) {
+            const formData = new FormData();
+            formData.append('date', date);
+            formData.append('taskTitle', taskTitle);
+            formData.append('isCompleted', isCompleted);
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date, taskTitle, isCompleted })
+                    body: formData,
                 });
             } catch (error) {
                 console.error("Failed to update task:", error);
@@ -417,3 +419,4 @@
     </script>
 </body>
 </html>
+
