@@ -55,9 +55,13 @@
             background-color: #10b981; /* emerald-500 */
             border-color: #10b981;
         }
-        .task-checkbox:checked + label span {
+        .task-checkbox:checked + label span.task-title {
             text-decoration: line-through;
             color: #6b7280; /* gray-500 */
+        }
+        .saving-indicator {
+            display: none;
+            font-style: italic;
         }
     </style>
 </head>
@@ -214,9 +218,6 @@
             weekend: ['#10b981', '#3b82f6', '#a8a29e']
         };
 
-        console.log("Tracker tasks:", tasks.map(t => t.title));
-        console.log("Completed tasks from DB:", completedTasks);
-        
         function renderDashboardSchedule(view) {
             const viewData = data[view];
             scheduleTitle.textContent = viewData.title;
@@ -311,6 +312,7 @@
 
             try {
                 const response = await fetch(`${SCRIPT_URL}?date=${dateStr}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const completedTasks = await response.json();
 
                 taskListEl.innerHTML = '';
@@ -323,35 +325,47 @@
                             <div class="w-6 h-6 border-2 border-stone-300 rounded-md mr-4 flex-shrink-0 transition-colors flex items-center justify-center">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                             </div>
-                            <span class="font-medium text-stone-700">${task.title}</span>
-                            <span class="ml-auto text-sm text-stone-500">${task.time}</span>
+                            <span class="font-medium text-stone-700 task-title">${task.title}</span>
+                            <span class="ml-auto text-sm text-stone-500 task-time">${task.time}</span>
+                            <span class="ml-2 text-xs text-stone-400 saving-indicator">Saving...</span>
                         </label>
                     `;
                     taskListEl.appendChild(taskEl);
                     taskEl.querySelector('input').addEventListener('change', (e) => {
-                        updateTaskStatus(dateStr, task.title, e.target.checked);
+                        const label = e.target.nextElementSibling;
+                        const indicator = label.querySelector('.saving-indicator');
+                        updateTaskStatus(dateStr, task.title, e.target.checked, indicator);
                         updateProgress();
                     });
                 });
                 updateProgress();
             } catch (error) {
-                taskListEl.innerHTML = `<div class="text-center py-8"><p class="text-red-500 font-semibold">Failed to load tracker data.</p><p class="text-stone-500 mt-2">Please check your Google Apps Script setup and network connection.</p></div>`;
+                taskListEl.innerHTML = `<div class="text-center py-8"><p class="text-red-500 font-semibold">Failed to load tracker data.</p><p class="text-stone-500 mt-2">Error: ${error.message}. Please check your Google Apps Script setup and network connection.</p></div>`;
             }
         }
 
-        async function updateTaskStatus(date, taskTitle, isCompleted) {
-            const formData = new FormData();
-            formData.append('date', date);
-            formData.append('taskTitle', taskTitle);
-            formData.append('isCompleted', isCompleted);
+        async function updateTaskStatus(date, taskTitle, isCompleted, indicator) {
+            indicator.style.display = 'inline';
+            const payload = { date, taskTitle, isCompleted };
             try {
-                await fetch(SCRIPT_URL, {
+                const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    body: formData,
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
                 });
+
+                if (!response.ok) {
+                   const errorText = await response.text();
+                   throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+                
+                await response.json();
             } catch (error) {
                 console.error("Failed to update task:", error);
-                alert("Failed to save progress. Please check your connection.");
+                alert("Failed to save progress. Please check your connection and Apps Script setup.");
+            } finally {
+                indicator.style.display = 'none';
             }
         }
 
@@ -422,4 +436,3 @@
     </script>
 </body>
 </html>
-
