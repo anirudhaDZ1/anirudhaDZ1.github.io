@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Overhaul Plan | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is now a multi-view SPA with 'Dashboard' and 'Tracker' pages. The structure uses a main navigation to switch between these views. The Dashboard retains its original design for planning and visualization. The new Tracker view is task-oriented, showing a daily checklist with progress visualization. This separation allows the user to focus on either planning (Dashboard) or execution (Tracker). Google Sheets integration via an Apps Script proxy enables persistent state for the tracker. -->
+    <!-- Visualization & Content Choices: 
+        - Main Navigation -> Navigate -> Buttons -> JS View Toggle -> Justification: Clear separation of concerns between planning and tracking.
+        - Tracker View -> Track Progress -> Checklist with Checkboxes -> JS + Google Apps Script -> Justification: Allows for daily, interactive task tracking with persistent storage.
+        - Progress Bar -> Inform -> Dynamic Width Bar -> JS updates -> Justification: Provides immediate visual feedback on daily goal completion.
+        - Date Navigation -> Navigate Time -> Buttons -> JS Date Change & Data Fetch -> Justification: Enables reviewing past performance and preparing for the next day.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* stone-100 */
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 19px;
+            top: 2.25rem;
+            bottom: -2.25rem;
+            width: 2px;
+            background-color: #d6d3d1; /* stone-300 */
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .view { display: none; }
+        .view.active { display: block; }
+        .task-checkbox:checked + label div {
+            background-color: #10b981; /* emerald-500 */
+            border-color: #10b981;
+        }
+        .task-checkbox:checked + label span {
+            text-decoration: line-through;
+            color: #6b7280; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="text-stone-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-stone-900">The Mission</h1>
+            <p class="mt-4 text-lg md:text-xl text-stone-600 max-w-3xl mx-auto">Engineer Your Habits to Engineer Your Future. This dashboard translates your plan into a daily operational guide.</p>
+        </header>
+        
+        <nav class="flex justify-center mb-8">
+            <div class="inline-flex rounded-lg shadow-sm bg-white p-1">
+                <button data-view="dashboard" class="view-btn px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Dashboard</button>
+                <button data-view="tracker" class="view-btn px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Tracker</button>
+            </div>
+        </nav>
+
+        <main>
+            <div id="dashboard-view" class="view">
+                <section id="dashboard" class="mb-12">
+                    <div class="text-center mb-8">
+                        <div class="inline-flex rounded-lg shadow-sm bg-white p-1">
+                            <button id="weekdayBtn" class="px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Weekday Blueprint</button>
+                            <button id="weekendBtn" class="px-4 sm:px-6 py-2 text-sm font-semibold rounded-md transition-colors duration-200">Weekend Assault</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                        <div id="schedule-container" class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+                            <div class="mb-6">
+                                <h2 id="schedule-title" class="text-2xl font-bold text-stone-900"></h2>
+                                <p id="schedule-intro" class="mt-2 text-stone-600"></p>
+                            </div>
+                            <div id="timeline" class="relative"></div>
+                        </div>
+                        <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-lg">
+                            <div class="mb-4 text-center">
+                                <h3 class="text-2xl font-bold text-stone-900">Time Allocation</h3>
+                                <p class="mt-2 text-stone-600">A visual breakdown of your 24-hour cycle, showing where your time is invested.</p>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="timeAllocationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tracker-view" class="view">
+                <section id="tracker" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-4 sm:mb-0">Daily Routine Tracker</h2>
+                        <div class="flex items-center space-x-2">
+                            <button id="prevDayBtn" class="p-2 rounded-md bg-stone-200 hover:bg-stone-300 transition-colors">◀</button>
+                            <span id="currentDate" class="text-lg font-semibold text-stone-700 w-48 text-center"></span>
+                            <button id="nextDayBtn" class="p-2 rounded-md bg-stone-200 hover:bg-stone-300 transition-colors">▶</button>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <div class="w-full bg-stone-200 rounded-full h-4">
+                            <div id="progressBar" class="bg-emerald-500 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-center mt-2 text-sm font-medium text-stone-600">0% Complete</p>
+                    </div>
+                    <div id="taskList" class="space-y-3">
+                        <div id="loader" class="text-center py-8">
+                            <p class="text-stone-500">Loading Tracker...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <section id="rules" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mt-12">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-stone-900">The Rules of Engagement</h2>
+                    <p class="mt-2 text-stone-600 max-w-2xl mx-auto">These core principles power the system. Adhere to them to build discipline.</p>
+                </div>
+                <div id="rules-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-12 py-6 border-t border-stone-200">
+            <p class="text-stone-500">A personalized performance system for The Boss. Stay focused.</p>
+        </footer>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwJfA2v13_9Uc1JOK8Zyhsp3amszHJRfmkD_QXdY713-vM4Tv-ITdnK3yC1PTjnn4ps/exec"; // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+
+        const data = {
+            weekday: {
+                title: "Weekday Blueprint",
+                intro: "This is your new standard operating procedure, maximizing focus while integrating a structured entertainment block.",
+                schedule: [
+                    { time: "7:30 AM", icon: "🌅", title: "Wake Up" },
+                    { time: "7:30 - 8:00 AM", icon: "💧", title: "Freshen Up & Hydrate" },
+                    { time: "8:00 - 10:15 AM", icon: "🧠", title: "DEEP WORK BLOCK 1: Theory" },
+                    { time: "10:15 - 11:00 AM", icon: "☕", title: "Prepare for Work" },
+                    { time: "11:00 AM - 8:00 PM", icon: "💼", title: "Day Job" },
+                    { time: "8:00 - 8:30 PM", icon: "🎧", title: "Unwind & Decompress" },
+                    { time: "8:30 - 9:30 PM", icon: "💻", title: "DEEP WORK BLOCK 2: Practical" },
+                    { time: "9:30 - 11:30 PM", icon: "🎬", title: "SCHEDULED ENTERTAINMENT & Dinner" },
+                    { time: "11:30 PM", icon: "📴", title: "Digital Sunset & Shutdown" },
+                    { time: "12:00 AM", icon: "🌙", title: "Lights Out" }
+                ],
+                chartData: { labels: ['Sleep', 'Deep Work', 'Day Job', 'Personal/Entertainment'], values: [7.5, 3.25, 9, 4.25] }
+            },
+            weekend: {
+                title: "Weekend Assault Plan",
+                intro: "Weekends are for making significant leaps in your portfolio and knowledge base. This is where you accelerate.",
+                schedule: [
+                    { time: "8:00 AM", icon: "🌅", title: "Wake Up" },
+                    { time: "8:00 - 9:00 AM", icon: "🏃", title: "Morning Routine" },
+                    { time: "9:00 AM - 1:00 PM", icon: "🚀", title: "MEGA BLOCK 1: Project Work" },
+                    { time: "1:00 - 2:00 PM", icon: "🍽️", title: "Lunch & Real Break" },
+                    { time: "2:00 - 5:00 PM", icon: "📚", title: "MEGA BLOCK 2: Learning" },
+                    { time: "5:00 - 7:00 PM", icon: "🏡", title: "Life Admin & Social Time" },
+                    { time: "7:00 - 8:30 PM", icon: "📝", title: "Review & Plan" },
+                    { time: "8:30 PM onwards", icon: "🎉", title: "COMPLETE FREEDOM & Dinner" }
+                ],
+                chartData: { labels: ['Study/Projects', 'Sleep', 'Personal/Free Time'], values: [7, 8, 9] }
+            },
+            rules: [
+                { icon: "⏱️", title: "The Pomodoro Technique", description: "Work in focused intervals (e.g., 50 mins on, 10 mins off) to train focus and prevent burnout." },
+                { icon: "📵", title: "Your Phone is Your Enemy", description: "During Deep Work blocks, it must be in another room or turned off. Notifications are the enemy of focus." },
+                { icon: "🗓️", title: "Prepare the Night Before", description: "Decide exactly what you will work on in your first study block the next morning. This removes friction." },
+                { icon: "💪", title: "Be Imperfectly Consistent", description: "You will have bad days. The goal is not perfection, but to get back on track with the next scheduled block. Aim for 80% compliance." },
+                { icon: "🛠️", title: "A System, Not a Prison", description: "This schedule is a tool to serve your ambition. After a month, review and adjust it, but always protect your Deep Work blocks." }
+            ]
+        };
+
+        let currentDashboardView = 'weekday';
+        let timeAllocationChart;
+        let currentDate = new Date();
+
+        const viewBtns = document.querySelectorAll('.view-btn');
+        const views = document.querySelectorAll('.view');
+        const weekdayBtn = document.getElementById('weekdayBtn');
+        const weekendBtn = document.getElementById('weekendBtn');
+        const timelineContainer = document.getElementById('timeline');
+        const scheduleTitle = document.getElementById('schedule-title');
+        const scheduleIntro = document.getElementById('schedule-intro');
+        const rulesGrid = document.getElementById('rules-grid');
+        const currentDateEl = document.getElementById('currentDate');
+        const prevDayBtn = document.getElementById('prevDayBtn');
+        const nextDayBtn = document.getElementById('nextDayBtn');
+        const taskListEl = document.getElementById('taskList');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        const chartColors = {
+            weekday: ['#3b82f6', '#10b981', '#f97316', '#a8a29e'],
+            weekend: ['#10b981', '#3b82f6', '#a8a29e']
+        };
+
+        function renderDashboardSchedule(view) {
+            const viewData = data[view];
+            scheduleTitle.textContent = viewData.title;
+            scheduleIntro.textContent = viewData.intro;
+            
+            timelineContainer.innerHTML = '';
+            viewData.schedule.forEach(item => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item relative pl-12 pb-12';
+                timelineItem.innerHTML = `
+                    <div class="absolute left-0 top-0 flex items-center justify-center w-10 h-10 bg-stone-200 rounded-full">
+                        <span class="text-xl">${item.icon}</span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-stone-500">${item.time}</p>
+                        <h4 class="text-lg font-semibold mt-1 text-stone-800">${item.title}</h4>
+                    </div>
+                `;
+                timelineContainer.appendChild(timelineItem);
+            });
+        }
+
+        function renderRules() {
+            rulesGrid.innerHTML = '';
+            data.rules.forEach(rule => {
+                const ruleCard = document.createElement('div');
+                ruleCard.className = 'bg-stone-50 p-6 rounded-xl border border-stone-200 hover:shadow-md hover:border-stone-300 transition-all duration-300';
+                ruleCard.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="text-3xl">${rule.icon}</div>
+                        <h4 class="text-xl font-bold text-stone-800">${rule.title}</h4>
+                    </div>
+                    <p class="mt-4 text-stone-600">${rule.description}</p>
+                `;
+                rulesGrid.appendChild(ruleCard);
+            });
+        }
+
+        function updateDashboardChart(view) {
+            const chartData = data[view].chartData;
+            timeAllocationChart.data.labels = chartData.labels;
+            timeAllocationChart.data.datasets[0].data = chartData.values;
+            timeAllocationChart.data.datasets[0].backgroundColor = chartColors[view];
+            timeAllocationChart.update();
+        }
+
+        function setActiveDashboardButton(view) {
+            if (view === 'weekday') {
+                weekdayBtn.classList.add('bg-stone-800', 'text-white');
+                weekendBtn.classList.remove('bg-stone-800', 'text-white');
+            } else {
+                weekendBtn.classList.add('bg-stone-800', 'text-white');
+                weekdayBtn.classList.remove('bg-stone-800', 'text-white');
+            }
+        }
+
+        function handleDashboardViewChange(view) {
+            currentDashboardView = view;
+            setActiveDashboardButton(view);
+            renderDashboardSchedule(view);
+            updateDashboardChart(view);
+        }
+        
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function displayDate(date) {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            if (formatDate(date) === formatDate(today)) return "Today";
+            if (formatDate(date) === formatDate(yesterday)) return "Yesterday";
+            
+            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        }
+
+        async function fetchAndRenderTracker() {
+            if (!SCRIPT_URL) {
+                taskListEl.innerHTML = `<div class="text-center py-8"><p class="text-red-500 font-semibold">Error: Google Apps Script URL is not set.</p><p class="text-stone-500 mt-2">Please follow the setup instructions to connect to Google Sheets.</p></div>`;
+                return;
+            }
+            taskListEl.innerHTML = `<div id="loader" class="text-center py-8"><p class="text-stone-500">Loading Tracker...</p></div>`;
+            currentDateEl.textContent = displayDate(currentDate);
+            
+            const dateStr = formatDate(currentDate);
+            const dayOfWeek = currentDate.getDay();
+            const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+            const scheduleType = isWeekend ? 'weekend' : 'weekday';
+            const tasks = data[scheduleType].schedule;
+
+            try {
+                const response = await fetch(`${SCRIPT_URL}?date=${dateStr}`);
+                const completedTasks = await response.json();
+
+                taskListEl.innerHTML = '';
+                tasks.forEach((task, index) => {
+                    const isCompleted = completedTasks[task.title] || false;
+                    const taskEl = document.createElement('div');
+                    taskEl.innerHTML = `
+                        <input type="checkbox" id="task-${index}" class="task-checkbox hidden" ${isCompleted ? 'checked' : ''}>
+                        <label for="task-${index}" class="flex items-center p-4 bg-stone-50 rounded-lg border border-stone-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                            <div class="w-6 h-6 border-2 border-stone-300 rounded-md mr-4 flex-shrink-0 transition-colors flex items-center justify-center">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <span class="font-medium text-stone-700">${task.title}</span>
+                            <span class="ml-auto text-sm text-stone-500">${task.time}</span>
+                        </label>
+                    `;
+                    taskListEl.appendChild(taskEl);
+                    taskEl.querySelector('input').addEventListener('change', (e) => {
+                        updateTaskStatus(dateStr, task.title, e.target.checked);
+                        updateProgress();
+                    });
+                });
+                updateProgress();
+            } catch (error) {
+                taskListEl.innerHTML = `<div class="text-center py-8"><p class="text-red-500 font-semibold">Failed to load tracker data.</p><p class="text-stone-500 mt-2">Please check your Google Apps Script setup and network connection.</p></div>`;
+            }
+        }
+
+        async function updateTaskStatus(date, taskTitle, isCompleted) {
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, taskTitle, isCompleted })
+                });
+            } catch (error) {
+                console.error("Failed to update task:", error);
+                alert("Failed to save progress. Please check your connection.");
+            }
+        }
+
+        function updateProgress() {
+            const checkboxes = document.querySelectorAll('.task-checkbox');
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const totalCount = checkboxes.length;
+            const percentage = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+            
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}% Complete (${checkedCount}/${totalCount})`;
+        }
+
+        function changeDay(offset) {
+            currentDate.setDate(currentDate.getDate() + offset);
+            fetchAndRenderTracker();
+        }
+
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const viewId = btn.getAttribute('data-view');
+                
+                views.forEach(view => view.classList.remove('active'));
+                document.getElementById(`${viewId}-view`).classList.add('active');
+
+                viewBtns.forEach(b => b.classList.remove('bg-stone-800', 'text-white'));
+                btn.classList.add('bg-stone-800', 'text-white');
+
+                if (viewId === 'tracker') {
+                    fetchAndRenderTracker();
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('timeAllocationChart').getContext('2d');
+            timeAllocationChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#f5f5f4', borderWidth: 4, hoverOffset: 10 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 20, font: { size: 14, family: 'Inter' }, color: '#44403c' }},
+                        tooltip: {
+                            enabled: true, backgroundColor: '#292524', titleFont: { size: 16, weight: 'bold' }, bodyFont: { size: 14 }, padding: 12, cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed !== null) { label += context.parsed + ' hrs'; }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            weekdayBtn.addEventListener('click', () => handleDashboardViewChange('weekday'));
+            weekendBtn.addEventListener('click', () => handleDashboardViewChange('weekend'));
+            prevDayBtn.addEventListener('click', () => changeDay(-1));
+            nextDayBtn.addEventListener('click', () => changeDay(1));
+
+            document.querySelector('.view-btn[data-view="dashboard"]').click();
+            handleDashboardViewChange('weekday');
+            renderRules();
+        });
+    </script>
+</body>
+</html>
